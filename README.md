@@ -1,4 +1,4 @@
-![Screenshot](images/screenshot.png)
+![Screenshot](screenshot.png)
 
 # Yellow Snow - Neural Network (C - SDL2)
 Earn points by collecting all the tasty white snow flakes that fall. But watch out for the yellow snow. The Neural Network can be loaded from a file if it exist, or a new random network will be created.When training finishes it will save the current top networks back into the neural-networks file. If ai_on is enabled the game will play but the neural-network will have the ablility to move the snowman. If ai_train is on the game will play without delay, with as many FPS as possible. If gfx_off is enabled then the game will not load a graphical window, or load SDL at all. It will play the game but you will not see it happening. This is much, much faster. If threads are used it will complete generations of training even faster. I was able to have it play 20 million games in 2.5 hours, using 16 threads on a laptop.
