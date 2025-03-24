@@ -3,8 +3,6 @@
 
 #include "main.h"
 
-#define FLAKE_SPEED 300
-
 struct Flake {
         struct Flake *next;
         SDL_Renderer *renderer;
@@ -15,14 +13,16 @@ struct Flake {
 };
 
 bool flake_new(struct Flake **flakes, SDL_Renderer *renderer,
-               SDL_Texture *image, bool is_white, bool gfx_on);
+               SDL_Texture *image, bool is_white, bool gfx_off);
 void flakes_free(struct Flake **flakes);
 void flake_reset(struct Flake *f, bool full);
 void flakes_reset(struct Flake *f, bool full);
-int flake_left(struct Flake *f);
-int flake_right(struct Flake *f);
-int flake_bottom(struct Flake *f);
+int flake_left(const struct Flake *f);
+int flake_right(const struct Flake *f);
+int flake_bottom(const struct Flake *f);
+double flake_normalized_x(const struct Flake *f, double player_x);
+double flake_normalized_y(const struct Flake *f, double player_y);
 void flakes_update(struct Flake *f, double dt);
-void flakes_draw(struct Flake *f);
+void flakes_draw(const struct Flake *f);
 
 #endif

@@ -24,26 +24,72 @@
 #define TARGET_FPS 60
 #define SHOW_FPS false
 
-#define SAVED_NETWORKS "neural-networks"
-#define MUTATION_RATE 0.5
-#define MUTATION_PROB 0.05
+#define FONT_FILE "fonts/freesansbold.ttf"
+#define FONT_SIZE 24
+#define FONT_COLOR (SDL_Color){255, 255, 255, 255}
+#define SCORE_X 10
+#define SCORE_Y 10
+
+#define PLAYER_Y 377
+#define PLAYER_TOP_OFFSET 10
+#define PLAYER_LEFT_OFFSET 47
+#define PLAYER_RIGHT_OFFSET 43
+#define PLAYER_SPEED 300
+
+#define FLAKE_SPEED 300
+#define WHITE_FLAKES 10
+#define YELLOW_FLAKES 5
+
+#define WHITE_INC 1
+#define YELLOW_INC -2
+
+#define INFO_DELAY 3000
+#define FILE_NAME "neural-networks"
 
 #define INPUTS 31
-#define FIRST_HIDDEN 15
-#define SECOND_HIDDEN 15
 #define OUTPUTS 2
 
+#define LAYER_SIZE 64
+#define LAYERS 10
+
+#define MUT_RATE 5
+#define MAX_RATE 15
+
+#define MUT_RANG 5
+#define MAX_RANG 15
+
 #define THREADS 1
-#define TOTAL_TRIALS 1
-#define TOTAL_VARIANTS 200
-#define TOTAL_GENS 1
-#define TOP_VARIANTS 32
+#define MAX_THREADS 24
+
+#define TICKS 1800
+#define MAX_TICKS 7200
+
+#define TRIALS 1
+#define MAX_TRIALS 10
+
+#define GENS 20
+#define MAX_GENS 1000000
+
+#define VARIANTS 240
+#define MAX_VARIANTS 1000
+
+#define TOP_VARIANTS 24
+#define MAX_TOP_VARIANTS 100
 
 struct AIConfig {
+        int layer_sizes[LAYERS];
+        int layer_count;
+        const char *filename;
+        int white_inc;
+        int yellow_inc;
         bool ai_on;
         bool ai_train;
-        bool gfx_on;
+        bool gfx_off;
+        bool fit_ticks;
+        double mut_rate;
+        double mut_rang;
         int thread_count;
+        int max_ticks;
         int trial_count;
         int variant_count;
         int generation_count;

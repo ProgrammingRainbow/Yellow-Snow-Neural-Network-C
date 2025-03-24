@@ -1,109 +1,120 @@
 #include "neural_network.h"
 
-void variant_rand(struct NeuralNetwork *n) {
-    for (int i = 0; i < FIRST_HIDDEN; i++) {
-        for (int j = 0; j < INPUTS; j++) {
-            n->first_weights[i][j] = ((double)rand() / RAND_MAX) * 2 - 1;
-        }
-        n->first_bias[i] = ((double)rand() / RAND_MAX) * 2 - 1;
-    }
+bool mutate_rate(double mut_rate);
+double mutate_rang(double mut_rang);
+double mutate_rand(void);
 
-    for (int i = 0; i < SECOND_HIDDEN; i++) {
-        for (int j = 0; j < FIRST_HIDDEN; j++) {
-            n->second_weights[i][j] = ((double)rand() / RAND_MAX) * 2 - 1;
-        }
-        n->second_bias[i] = ((double)rand() / RAND_MAX) * 2 - 1;
-    }
-
-    for (int i = 0; i < OUTPUTS; i++) {
-        for (int j = 0; j < SECOND_HIDDEN; j++) {
-            n->final_weights[i][j] = ((double)rand() / RAND_MAX) * 2 - 1;
-        }
-        n->final_bias[i] = ((double)rand() / RAND_MAX) * 2 - 1;
-    }
+bool mutate_rate(double mut_rate) {
+    return ((double)rand() / RAND_MAX < mut_rate);
 }
 
-void variant_mutate(struct NeuralNetwork *n) {
+double mutate_rang(double mut_rang) {
+    return ((double)rand() / RAND_MAX) * 2 * mut_rang - mut_rang;
+}
+
+double mutate_rand(void) { return ((double)rand() / RAND_MAX) * 2 - 1; }
+
+void variant_rand(struct NeuralNetwork *n) {
+    int input_size = INPUTS;
+
+    for (int layer = 0; layer < n->layers; layer++) {
+        int layer_size = n->hidden[layer].size;
+        for (int neuron = 0; neuron < layer_size; neuron++) {
+            for (int input = 0; input < input_size; input++) {
+                n->hidden[layer].weights[neuron][input] = mutate_rand();
+            }
+            n->hidden[layer].bias[neuron] = mutate_rand();
+        }
+        input_size = layer_size;
+    }
+
+    for (int neuron = 0; neuron < OUTPUTS; neuron++) {
+        for (int input = 0; input < input_size; input++) {
+            n->final_weights[neuron][input] = mutate_rand();
+        }
+        n->final_bias[neuron] = mutate_rand();
+    }
+}
+void variant_mutate(struct NeuralNetwork *n, double mut_rate, double mut_rang) {
     n->generation++;
-    for (int i = 0; i < FIRST_HIDDEN; i++) {
-        for (int j = 0; j < INPUTS; j++) {
-            if ((double)rand() / RAND_MAX < MUTATION_PROB) {
-                n->first_weights[i][j] +=
-                    ((double)rand() / RAND_MAX) * 2 * MUTATION_RATE -
-                    MUTATION_RATE;
+    int input_size = INPUTS;
+
+    for (int layer = 0; layer < n->layers; layer++) {
+        int layer_size = n->hidden[layer].size;
+        for (int neuron = 0; neuron < layer_size; neuron++) {
+            for (int input = 0; input < input_size; input++) {
+                if (mutate_rate(mut_rate)) {
+                    n->hidden[layer].weights[neuron][input] +=
+                        mutate_rang(mut_rang);
+                }
+            }
+            if (mutate_rate(mut_rate)) {
+                n->hidden[layer].bias[neuron] += mutate_rang(mut_rang);
             }
         }
-        if ((double)rand() / RAND_MAX < MUTATION_PROB) {
-            n->first_bias[i] +=
-                ((double)rand() / RAND_MAX) * 2 * MUTATION_RATE - MUTATION_RATE;
-        }
+        input_size = layer_size;
     }
 
-    for (int i = 0; i < SECOND_HIDDEN; i++) {
-        for (int j = 0; j < FIRST_HIDDEN; j++) {
-            if ((double)rand() / RAND_MAX < MUTATION_PROB) {
-                n->second_weights[i][j] +=
-                    ((double)rand() / RAND_MAX) * 2 * MUTATION_RATE -
-                    MUTATION_RATE;
+    for (int neuron = 0; neuron < OUTPUTS; neuron++) {
+        for (int input = 0; input < input_size; input++) {
+            if (mutate_rate(mut_rate)) {
+                n->final_weights[neuron][input] += mutate_rang(mut_rang);
             }
         }
-        if ((double)rand() / RAND_MAX < MUTATION_PROB) {
-            n->second_bias[i] +=
-                ((double)rand() / RAND_MAX) * 2 * MUTATION_RATE - MUTATION_RATE;
-        }
-    }
-
-    for (int i = 0; i < OUTPUTS; i++) {
-        for (int j = 0; j < SECOND_HIDDEN; j++) {
-            if ((double)rand() / RAND_MAX < MUTATION_PROB) {
-                n->final_weights[i][j] +=
-                    ((double)rand() / RAND_MAX) * 2 * MUTATION_RATE -
-                    MUTATION_RATE;
-            }
-        }
-        if ((double)rand() / RAND_MAX < MUTATION_PROB) {
-            n->final_bias[i] +=
-                ((double)rand() / RAND_MAX) * 2 * MUTATION_RATE - MUTATION_RATE;
+        if (mutate_rate(mut_rate)) {
+            n->final_bias[neuron] += mutate_rang(mut_rang);
         }
     }
 }
 
 void network_update(struct NeuralNetwork *n) {
+    int input_size = INPUTS;
+    double *inputs = n->inputs;
+    for (int layer = 0; layer < n->layers; layer++) {
+        int layer_size = n->hidden[layer].size;
+        for (int neuron = 0; neuron < layer_size; neuron++) {
+            double output = 0;
+            for (int input = 0; input < input_size; input++) {
+                output +=
+                    inputs[input] * n->hidden[layer].weights[neuron][input];
+                // printf("neuron = %i\n", neuron);
+                // printf("input = %i\n", input);
+            }
+            output += n->hidden[layer].bias[neuron];
 
-    // Calculate first hidden layer.
-    for (int neuron = 0; neuron < FIRST_HIDDEN; neuron++) {
-        double output = 0;
-        for (int input = 0; input < INPUTS; input++) {
-            output += n->inputs[input] * n->first_weights[neuron][input];
+            // ReLU (Rectified Linear Unit) activation function. Just 0 if
+            // negative.
+            n->hidden[layer].output[neuron] = (output > 0) ? output : 0;
         }
-        output += n->first_bias[neuron];
-
-        // ReLU (Rectified Linear Unit) activation function. Just 0 if negative.
-        n->first_output[neuron] = (output > 0) ? output : 0;
-    }
-
-    // Calculate second hidden layer.
-    for (int neuron = 0; neuron < SECOND_HIDDEN; neuron++) {
-        double output = 0;
-        for (int input = 0; input < FIRST_HIDDEN; input++) {
-            output += n->first_output[input] * n->second_weights[neuron][input];
-        }
-        output += n->second_bias[neuron];
-
-        // ReLU (Rectified Linear Unit) activation function. Just 0 if negative.
-        n->second_output[neuron] = (output > 0) ? output : 0;
+        input_size = layer_size;
+        inputs = n->hidden[layer].output;
     }
 
     // Calculate output layer.
     for (int neuron = 0; neuron < OUTPUTS; neuron++) {
         double output = 0;
-        for (int input = 0; input < SECOND_HIDDEN; input++) {
-            output += n->second_output[input] * n->final_weights[neuron][input];
+        for (int input = 0; input < input_size; input++) {
+            // printf("neuron = %i\n", neuron);
+            // printf("input = %i\n", input);
+            // printf("inputs[input] = %f\n", inputs[input]);
+            // printf("n->final_weights[neuron][input] = %f\n",
+            //        n->final_weights[neuron][input]);
+            output += inputs[input] * n->final_weights[neuron][input];
         }
         output += n->final_bias[neuron];
 
         // Hard Sigmoid or Step Function, activation function. 1 for over 0
         // otherwise 0.
-        n->final_output[neuron] = (output > 0) ? true : false;
+        n->final_output[neuron] = output;
+    }
+
+    n->output[0] = false;
+    n->output[1] = false;
+    if (n->final_output[0] > 0 || n->final_output[1] > 0) {
+        if (n->final_output[0] > n->final_output[1]) {
+            n->output[0] = true;
+        } else {
+            n->output[1] = true;
+        }
     }
 }

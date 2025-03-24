@@ -1,22 +1,23 @@
 #include "game.h"
 #include "initialize.h"
 #include "load_media.h"
-#include "neural_network.h"
 
 bool game_reset(struct Game *g);
 bool handle_collision(struct Game *g, struct Flake *f);
 bool check_collision(struct Game *g);
 bool game_update(struct Game *g);
-void game_draw(struct Game *g);
+void game_draw(const struct Game *g);
 void game_ai_update(struct Game *g);
 
-bool game_new(struct Game *g, struct AIConfig ai_config) {
+bool game_new(struct Game *g, const struct AIConfig *config) {
 
-    g->ai_on = ai_config.ai_on;
-    g->ai_train = ai_config.ai_train;
-    g->gfx_on = ai_config.gfx_on;
-    g->game_variant_count = ai_config.game_variant_count;
-    g->trial_count = ai_config.trial_count;
+    g->ai_on = config->ai_on;
+    g->ai_train = config->ai_train;
+    g->gfx_off = config->gfx_off;
+    g->fit_ticks = config->fit_ticks;
+    g->max_ticks = config->max_ticks;
+    g->game_variant_count = config->game_variant_count;
+    g->trial_count = config->trial_count;
 
     g->networks =
         calloc((size_t)g->game_variant_count, sizeof(struct NeuralNetwork));
@@ -27,7 +28,7 @@ bool game_new(struct Game *g, struct AIConfig ai_config) {
 
     srand((Uint32)time(NULL));
 
-    if (g->gfx_on) {
+    if (!g->gfx_off) {
         if (!sdl_initilize(g)) {
             return false;
         }
@@ -37,25 +38,25 @@ bool game_new(struct Game *g, struct AIConfig ai_config) {
         }
     }
 
-    if (!player_new(&g->player, g->renderer, g->player_image, g->gfx_on)) {
+    if (!player_new(&g->player, g->renderer, g->player_image, g->gfx_off)) {
         return false;
     }
 
-    for (unsigned int i = 0; i < 10; i++) {
+    for (unsigned int i = 0; i < WHITE_FLAKES; i++) {
         if (!flake_new(&g->flakes, g->renderer, g->white_image, true,
-                       g->gfx_on)) {
+                       g->gfx_off)) {
             return false;
         }
     }
 
-    for (unsigned int i = 0; i < 5; i++) {
+    for (unsigned int i = 0; i < YELLOW_FLAKES; i++) {
         if (!flake_new(&g->flakes, g->renderer, g->yellow_image, false,
-                       g->gfx_on)) {
+                       g->gfx_off)) {
             return false;
         }
     }
 
-    if (!score_new(&g->score, g->renderer, g->gfx_on)) {
+    if (!score_new(&g->score, g->renderer, config)) {
         return false;
     }
 
@@ -76,7 +77,7 @@ void game_free(struct Game *g) {
     score_free(&g->score);
     fps_free(&g->fps);
 
-    if (g->gfx_on) {
+    if (!g->gfx_off) {
         if (g->hit_sound) {
             Mix_FreeChunk(g->hit_sound);
             g->hit_sound = NULL;
@@ -136,7 +137,7 @@ bool game_reset(struct Game *g) {
         return false;
     }
 
-    if (g->gfx_on) {
+    if (!g->gfx_off) {
         if (Mix_PlayMusic(g->winter_music, -1)) {
             fprintf(stderr, "Error while playing music: %s\n", Mix_GetError());
             return false;
@@ -147,6 +148,10 @@ bool game_reset(struct Game *g) {
         player_reset(g->player);
     }
 
+    if (g->fit_ticks) {
+        g->game_ticks = 0;
+    }
+
     g->playing = true;
 
     return true;
@@ -154,7 +159,7 @@ bool game_reset(struct Game *g) {
 
 bool handle_collision(struct Game *g, struct Flake *f) {
     if (f->is_white) {
-        if (g->gfx_on) {
+        if (!g->gfx_off) {
             Mix_PlayChannel(-1, g->collect_sound, 0);
         }
         if (!score_increment(g->score)) {
@@ -162,13 +167,18 @@ bool handle_collision(struct Game *g, struct Flake *f) {
         }
         flake_reset(f, false);
     } else {
-        if (g->gfx_on) {
+        if (!g->gfx_off) {
             Mix_HaltMusic();
             Mix_PlayChannel(-1, g->hit_sound, 0);
         }
 
-        if (g->ai_train) {
+        if (g->fit_ticks) {
             game_ai_update(g);
+        } else if (g->ai_train) {
+            if (!score_decrement(g->score)) {
+                return false;
+            }
+            flake_reset(f, false);
         } else {
             g->playing = false;
         }
@@ -178,7 +188,11 @@ bool handle_collision(struct Game *g, struct Flake *f) {
 }
 
 void game_ai_update(struct Game *g) {
-    g->networks[g->current_variant].fitness += g->score->score;
+    if (g->fit_ticks) {
+        g->networks[g->current_variant].fitness += g->game_ticks;
+    } else {
+        g->networks[g->current_variant].fitness += g->score->score;
+    }
     g->current_trial++;
     if (g->current_trial < g->trial_count) {
         game_reset(g);
@@ -193,6 +207,7 @@ void game_ai_update(struct Game *g) {
             g->running = false;
         }
     }
+    /*printf("fitness: %d\n", g->networks[g->current_variant].fitness);*/
 }
 
 bool check_collision(struct Game *g) {
@@ -215,17 +230,25 @@ bool check_collision(struct Game *g) {
 bool game_update(struct Game *g) {
     flakes_update(g->flakes, g->delta_time);
 
+    // printf("player x: %f\n", player_center_x(g->player));
+    // printf("player y: %f\n", player_center_y(g->player));
+
+    // printf("flake x: %f\n",
+    //        flake_normalized_x(g->flakes, player_center_x(g->player)));
+    // printf("flake y: %f\n",
+    //        flake_normalized_y(g->flakes, player_center_y(g->player)));
+
     if (g->ai_on) {
         g->networks[g->current_variant].inputs[0] =
-            (double)player_left(g->player) / WINDOW_WIDTH;
+            player_normalized_x(g->player);
 
         int input = 1;
         struct Flake *flake = g->flakes;
         while (flake) {
             g->networks[g->current_variant].inputs[input] =
-                (double)(flake->rect.x) / WINDOW_WIDTH;
+                flake_normalized_x(flake, player_center_x(g->player));
             g->networks[g->current_variant].inputs[input + 1] =
-                (double)(flake->rect.y) / WINDOW_HEIGHT;
+                flake_normalized_y(flake, player_center_y(g->player));
             input += 2;
             flake = flake->next;
         }
@@ -233,8 +256,8 @@ bool game_update(struct Game *g) {
         network_update(&g->networks[g->current_variant]);
 
         player_update(g->player, g->delta_time,
-                      g->networks[g->current_variant].final_output[0],
-                      g->networks[g->current_variant].final_output[1]);
+                      g->networks[g->current_variant].output[0],
+                      g->networks[g->current_variant].output[1]);
     } else {
         player_update(g->player, g->delta_time, false, false);
     }
@@ -243,10 +266,20 @@ bool game_update(struct Game *g) {
         return false;
     }
 
+    if (g->ai_train) {
+        g->game_ticks++;
+        if (!g->fit_ticks) {
+            if (g->game_ticks > g->max_ticks) {
+                g->game_ticks = 0;
+                game_ai_update(g);
+            }
+        }
+    }
+
     return true;
 }
 
-void game_draw(struct Game *g) {
+void game_draw(const struct Game *g) {
     SDL_RenderClear(g->renderer);
 
     SDL_RenderCopy(g->renderer, g->background_image, NULL, &g->background_rect);
@@ -272,7 +305,7 @@ void *game_run_multi(void *arg) {
 }
 
 bool game_run(struct Game *g) {
-    if (g->gfx_on) {
+    if (!g->gfx_off) {
         if (Mix_PlayMusic(g->winter_music, -1)) {
             fprintf(stderr, "Error while playing music: %s\n", Mix_GetError());
             return false;
@@ -281,16 +314,16 @@ bool game_run(struct Game *g) {
 
     g->running = true;
     while (g->running) {
-        if (g->gfx_on) {
+        if (!g->gfx_off) {
             while (SDL_PollEvent(&g->event)) {
                 switch (g->event.type) {
                 case SDL_QUIT:
-                    return true;
+                    g->running = false;
                     break;
                 case SDL_KEYDOWN:
                     switch (g->event.key.keysym.scancode) {
                     case SDL_SCANCODE_ESCAPE:
-                        return true;
+                        g->running = false;
                         break;
                     case SDL_SCANCODE_SPACE:
                         if (!g->playing) {
@@ -305,6 +338,7 @@ bool game_run(struct Game *g) {
                     default:
                         break;
                     }
+                    break;
                 default:
                     break;
                 }
@@ -315,7 +349,7 @@ bool game_run(struct Game *g) {
             game_update(g);
         }
 
-        if (g->gfx_on) {
+        if (!g->gfx_off) {
             game_draw(g);
         }
 

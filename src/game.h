@@ -4,6 +4,7 @@
 #include "flake.h"
 #include "fps.h"
 #include "main.h"
+#include "neural_network.h"
 #include "player.h"
 #include "score.h"
 
@@ -29,14 +30,17 @@ struct Game {
         double delta_time;
         bool ai_on;
         bool ai_train;
-        bool gfx_on;
+        bool gfx_off;
+        bool fit_ticks;
         int game_variant_count;
         int trial_count;
         int current_variant;
         int current_trial;
+        int max_ticks;
+        int game_ticks;
 };
 
-bool game_new(struct Game *game, struct AIConfig ai_config);
+bool game_new(struct Game *game, const struct AIConfig *config);
 void game_free(struct Game *game);
 bool game_run(struct Game *g);
 void *game_run_multi(void *arg);

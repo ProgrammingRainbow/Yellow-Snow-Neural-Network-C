@@ -1,7 +1,7 @@
 #include "flake.h"
 
 bool flake_new(struct Flake **flakes, SDL_Renderer *renderer,
-               SDL_Texture *image, bool is_white, bool gfx_on) {
+               SDL_Texture *image, bool is_white, bool gfx_off) {
 
     struct Flake *new_flake = calloc(1, sizeof(struct Flake));
     if (!new_flake) {
@@ -11,7 +11,7 @@ bool flake_new(struct Flake **flakes, SDL_Renderer *renderer,
 
     new_flake->is_white = is_white;
 
-    if (gfx_on) {
+    if (!gfx_off) {
         new_flake->renderer = renderer;
         new_flake->image = image;
 
@@ -52,9 +52,12 @@ void flakes_free(struct Flake **flakes) {
 
 void flake_reset(struct Flake *f, bool full) {
     int height = full ? WINDOW_HEIGHT * 2 : WINDOW_HEIGHT;
-    f->rect.x = (rand() % (WINDOW_WIDTH - f->rect.w));
+    f->rect.x = (rand() % (WINDOW_WIDTH + f->rect.w)) - f->rect.w;
     f->rect.y = -((rand() % height) + f->rect.h);
     f->y_pos = f->rect.y;
+    // f->normalized_x =
+    //     ((double)(f->rect.x + f->rect.w) / (WINDOW_WIDTH + f->rect.w)) * 2 -
+    //     1;
 }
 
 void flakes_reset(struct Flake *f, bool full) {
@@ -64,11 +67,20 @@ void flakes_reset(struct Flake *f, bool full) {
     }
 }
 
-int flake_left(struct Flake *f) { return f->rect.x; }
+int flake_left(const struct Flake *f) { return f->rect.x; }
 
-int flake_right(struct Flake *f) { return f->rect.x + f->rect.w; }
+int flake_right(const struct Flake *f) { return f->rect.x + f->rect.w; }
 
-int flake_bottom(struct Flake *f) { return f->rect.y + f->rect.h; }
+int flake_bottom(const struct Flake *f) { return f->rect.y + f->rect.h; }
+
+double flake_normalized_x(const struct Flake *f, double player_x) {
+    return ((player_x - f->rect.x - (f->rect.w / 2.0)) /
+            (WINDOW_WIDTH + f->rect.w));
+}
+
+double flake_normalized_y(const struct Flake *f, double player_y) {
+    return ((player_y - f->rect.y - (f->rect.h / 2.0)) / (WINDOW_HEIGHT * 2));
+}
 
 void flakes_update(struct Flake *f, double dt) {
     while (f) {
@@ -76,13 +88,13 @@ void flakes_update(struct Flake *f, double dt) {
         if (f->y_pos > 514) {
             flake_reset(f, false);
         } else {
-            f->rect.y = (int)(f->y_pos + 0.5);
+            f->rect.y = (int)f->y_pos;
         }
         f = f->next;
     }
 }
 
-void flakes_draw(struct Flake *f) {
+void flakes_draw(const struct Flake *f) {
     while (f) {
         SDL_RenderCopy(f->renderer, f->image, NULL, &f->rect);
         f = f->next;
