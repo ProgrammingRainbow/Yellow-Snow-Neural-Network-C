@@ -13,7 +13,8 @@ ArchLinux instructions.
 ```
 sudo pacman -S --needed base-devel
 sudo pacman -S --needed sdl2 sdl2_image sdl2_mixer sdl2_ttf
-./yellow-snow
+make release
+./yellow-snow --ai_on
 ```
 Command line switches. Some switches will turn others on or off. `--ai_train` will enable `--ai_on` and if `--threads` are set then so is `--gfx_off`.
 ```
