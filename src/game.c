@@ -14,7 +14,7 @@ bool game_new(struct Game *g, const struct AIConfig *config) {
     g->ai_on = config->ai_on;
     g->ai_train = config->ai_train;
     g->gfx_off = config->gfx_off;
-    g->fit_ticks = config->fit_ticks;
+    g->fit_style = config->fit_style;
     g->max_ticks = config->max_ticks;
     g->game_variant_count = config->game_variant_count;
     g->trial_count = config->trial_count;
@@ -148,7 +148,7 @@ bool game_reset(struct Game *g) {
         player_reset(g->player);
     }
 
-    if (g->fit_ticks) {
+    if (g->ai_train) {
         g->game_ticks = 0;
     }
 
@@ -172,13 +172,15 @@ bool handle_collision(struct Game *g, struct Flake *f) {
             Mix_PlayChannel(-1, g->hit_sound, 0);
         }
 
-        if (g->fit_ticks) {
-            game_ai_update(g);
-        } else if (g->ai_train) {
-            if (!score_decrement(g->score)) {
-                return false;
+        if (g->ai_train) {
+            if (g->fit_style == FIT_TIMED) {
+                if (!score_decrement(g->score)) {
+                    return false;
+                }
+                flake_reset(f, false);
+            } else {
+                game_ai_update(g);
             }
-            flake_reset(f, false);
         } else {
             g->playing = false;
         }
@@ -188,11 +190,12 @@ bool handle_collision(struct Game *g, struct Flake *f) {
 }
 
 void game_ai_update(struct Game *g) {
-    if (g->fit_ticks) {
+    if (g->fit_style == FIT_TICKS) {
         g->networks[g->current_variant].fitness += g->game_ticks;
     } else {
         g->networks[g->current_variant].fitness += g->score->score;
     }
+
     g->current_trial++;
     if (g->current_trial < g->trial_count) {
         game_reset(g);
@@ -268,9 +271,8 @@ bool game_update(struct Game *g) {
 
     if (g->ai_train) {
         g->game_ticks++;
-        if (!g->fit_ticks) {
+        if (g->fit_style == FIT_TIMED) {
             if (g->game_ticks > g->max_ticks) {
-                g->game_ticks = 0;
                 game_ai_update(g);
             }
         }

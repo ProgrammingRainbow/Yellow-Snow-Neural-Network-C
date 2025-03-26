@@ -76,6 +76,8 @@
 #define TOP_VARIANTS 24
 #define MAX_TOP_VARIANTS 100
 
+enum Fitness { FIT_SCORE, FIT_TICKS, FIT_TIMED };
+
 struct AIConfig {
         int layer_sizes[LAYERS];
         int layer_count;
@@ -85,7 +87,7 @@ struct AIConfig {
         bool ai_on;
         bool ai_train;
         bool gfx_off;
-        bool fit_ticks;
+        enum Fitness fit_style;
         double mut_rate;
         double mut_rang;
         int thread_count;

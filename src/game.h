@@ -31,7 +31,7 @@ struct Game {
         bool ai_on;
         bool ai_train;
         bool gfx_off;
-        bool fit_ticks;
+        enum Fitness fit_style;
         int game_variant_count;
         int trial_count;
         int current_variant;
