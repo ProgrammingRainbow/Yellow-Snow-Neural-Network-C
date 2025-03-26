@@ -22,7 +22,9 @@ Command line switches. Some switches will turn others on or off. `--ai_train` wi
 --ai_train              // Train network and save to file.
 --gfx_off               // Disable graphics mode for training.
 --filename {string}     // Filename of network to load or save to.
---fit_ticks             // Switch fitness from score to how many ticks tell yellow collide.
+                        // fitness by default is score at yellow collide.
+--fit_ticks             // Switch fitness to number of ticks at yellow collide.
+--fit_timed             // Switch fitness to score when max_ticks reached.
 --white_inc {+-int}     // Training white flake collision fitness increment.
 --yellow_inc {+-int}    // Training yellow flake collision fitness increment.
 --mut_rate {int}        // Rate of random mutation in percentage.
