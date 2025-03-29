@@ -187,9 +187,7 @@ bool ai_run(struct AI *a, const struct AIConfig *config) {
 
         for (int gen = 0; gen < config->generation_count; gen++) {
             networks_populate(a, config);
-            if (!config->gfx_off) {
-                game_run(&a->games[0]);
-            } else {
+            if (config->gfx_off || config->thread_count > 1) {
                 for (int thread = 0; thread < config->thread_count; thread++) {
                     pthread_create(&threads[thread], NULL, game_run_multi,
                                    &a->games[thread]);
@@ -198,18 +196,18 @@ bool ai_run(struct AI *a, const struct AIConfig *config) {
                 for (int thread = 0; thread < config->thread_count; thread++) {
                     pthread_join(threads[thread], NULL);
                 }
+            } else {
+                game_run(&a->games[0]);
             }
 
-            if (config->ai_train) {
-                networks_get_top(a, config);
+            networks_get_top(a, config);
 
-                for (int i = 0; i < config->top_variant_count; i++) {
-                    printf("fitness: %d, generation: %d\n", a->top[i].fitness,
-                           a->top[i].generation);
-                }
-
-                printf("generation: %d\n", gen + 1);
+            for (int i = 0; i < config->top_variant_count; i++) {
+                printf("fitness: %d, generation: %d\n", a->top[i].fitness,
+                       a->top[i].generation);
             }
+
+            printf("generation: %d\n", gen + 1);
         }
 
         networks_save(a, config);

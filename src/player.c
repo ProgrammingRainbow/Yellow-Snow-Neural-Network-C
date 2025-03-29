@@ -1,8 +1,7 @@
 #include "player.h"
-#include "main.h"
 
 bool player_new(struct Player **player, SDL_Renderer *renderer,
-                SDL_Texture *image, bool gfx_off) {
+                SDL_Texture *image, bool gfx_off, bool ai_train) {
     *player = calloc(1, sizeof(struct Player));
     if (!*player) {
         fprintf(stderr, "Error in calloc of player!\n");
@@ -10,9 +9,9 @@ bool player_new(struct Player **player, SDL_Renderer *renderer,
     }
     struct Player *p = *player;
 
-    p->gfx_off = gfx_off;
+    p->ai_train = ai_train;
 
-    if (!p->gfx_off) {
+    if (!gfx_off) {
         p->renderer = renderer;
         p->image = image;
 
@@ -62,7 +61,7 @@ int player_right(const struct Player *p) {
 int player_top(const struct Player *p) { return p->rect.y + PLAYER_TOP_OFFSET; }
 
 double player_center_x(const struct Player *p) {
-    return p->x_pos + (p->rect.w / 2.0);
+    return p->rect.x + (p->rect.w / 2.0);
 }
 
 double player_center_y(const struct Player *p) {
@@ -70,37 +69,41 @@ double player_center_y(const struct Player *p) {
 }
 
 double player_normalized_x(const struct Player *p) {
-    return ((p->x_pos + (p->rect.w / 2.0)) / WINDOW_WIDTH) * 2 - 1;
+    return ((p->rect.x + (p->rect.w / 2.0)) / WINDOW_WIDTH) * 2 - 1;
 }
 
 void player_update(struct Player *p, double dt, bool left, bool right) {
-
-    bool move_left = false;
-    bool move_right = false;
-
-    if (!p->gfx_off) {
-        move_left = p->keystate[SDL_SCANCODE_LEFT] || left;
-        move_right = p->keystate[SDL_SCANCODE_RIGHT] || right;
+    if (p->ai_train) {
+        if (left) {
+            p->rect.x -= PLAYER_AI_SPEED;
+            if (p->rect.x < -PLAYER_LEFT_OFFSET) {
+                p->rect.x = -PLAYER_LEFT_OFFSET;
+            }
+        }
+        if (right) {
+            p->rect.x += PLAYER_AI_SPEED;
+            if (p->rect.x > WINDOW_WIDTH - p->rect.w + PLAYER_RIGHT_OFFSET) {
+                p->rect.x = WINDOW_WIDTH - p->rect.w + PLAYER_RIGHT_OFFSET;
+            }
+        }
     } else {
-        move_left = left;
-        move_right = right;
-    }
-
-    if (move_left) {
-        p->x_pos -= PLAYER_SPEED * dt;
-        if (p->x_pos < -PLAYER_LEFT_OFFSET) {
-            p->x_pos = -PLAYER_LEFT_OFFSET;
+        if (p->keystate[SDL_SCANCODE_LEFT] || p->keystate[SDL_SCANCODE_A] ||
+            left) {
+            p->x_pos -= PLAYER_SPEED * dt;
+            if (p->x_pos < -PLAYER_LEFT_OFFSET) {
+                p->x_pos = -PLAYER_LEFT_OFFSET;
+            }
+            p->flip = SDL_FLIP_HORIZONTAL;
         }
-        p->rect.x = (int)(p->x_pos + 0.5);
-        p->flip = SDL_FLIP_HORIZONTAL;
-    }
-    if (move_right) {
-        p->x_pos += PLAYER_SPEED * dt;
-        if (p->x_pos > WINDOW_WIDTH - p->rect.w + PLAYER_RIGHT_OFFSET) {
-            p->x_pos = WINDOW_WIDTH - p->rect.w + PLAYER_RIGHT_OFFSET;
+        if (p->keystate[SDL_SCANCODE_RIGHT] || p->keystate[SDL_SCANCODE_D] ||
+            right) {
+            p->x_pos += PLAYER_SPEED * dt;
+            if (p->x_pos > WINDOW_WIDTH - p->rect.w + PLAYER_RIGHT_OFFSET) {
+                p->x_pos = WINDOW_WIDTH - p->rect.w + PLAYER_RIGHT_OFFSET;
+            }
+            p->flip = SDL_FLIP_NONE;
         }
-        p->rect.x = (int)(p->x_pos + 0.5);
-        p->flip = SDL_FLIP_NONE;
+        p->rect.x = (int)(p->x_pos);
     }
 }
 

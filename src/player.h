@@ -10,11 +10,11 @@ struct Player {
         SDL_RendererFlip flip;
         const Uint8 *keystate;
         double x_pos;
-        bool gfx_off;
+        bool ai_train;
 };
 
 bool player_new(struct Player **player, SDL_Renderer *renderer,
-                SDL_Texture *image, bool gfx_on);
+                SDL_Texture *image, bool gfx_on, bool ai_train);
 void player_free(struct Player **player);
 void player_reset(struct Player *p);
 int player_left(const struct Player *p);

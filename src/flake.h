@@ -10,10 +10,11 @@ struct Flake {
         SDL_Rect rect;
         double y_pos;
         bool is_white;
+        bool ai_train;
 };
 
 bool flake_new(struct Flake **flakes, SDL_Renderer *renderer,
-               SDL_Texture *image, bool is_white, bool gfx_off);
+               SDL_Texture *image, bool is_white, bool gfx_off, bool ai_train);
 void flakes_free(struct Flake **flakes);
 void flake_reset(struct Flake *f, bool full);
 void flakes_reset(struct Flake *f, bool full);

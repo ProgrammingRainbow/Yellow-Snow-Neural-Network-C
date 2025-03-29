@@ -1,4 +1,3 @@
-#include "main.h"
 #include "ai.h"
 
 bool is_number(const char *str);

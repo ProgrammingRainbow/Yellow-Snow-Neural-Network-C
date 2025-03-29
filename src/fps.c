@@ -3,7 +3,6 @@
 Uint32 fps_time_since(Uint32 last_time, Uint32 *new_last_time);
 
 bool fps_new(struct Fps **fps) {
-
     *fps = calloc(1, sizeof(struct Fps));
     if (!*fps) {
         fprintf(stderr, "Error in calloc of fps!\n");

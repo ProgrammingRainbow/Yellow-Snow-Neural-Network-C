@@ -1,7 +1,7 @@
 #include "flake.h"
 
 bool flake_new(struct Flake **flakes, SDL_Renderer *renderer,
-               SDL_Texture *image, bool is_white, bool gfx_off) {
+               SDL_Texture *image, bool is_white, bool gfx_off, bool ai_train) {
 
     struct Flake *new_flake = calloc(1, sizeof(struct Flake));
     if (!new_flake) {
@@ -10,6 +10,7 @@ bool flake_new(struct Flake **flakes, SDL_Renderer *renderer,
     }
 
     new_flake->is_white = is_white;
+    new_flake->ai_train = ai_train;
 
     if (!gfx_off) {
         new_flake->renderer = renderer;
@@ -55,9 +56,6 @@ void flake_reset(struct Flake *f, bool full) {
     f->rect.x = (rand() % (WINDOW_WIDTH + f->rect.w)) - f->rect.w;
     f->rect.y = -((rand() % height) + f->rect.h);
     f->y_pos = f->rect.y;
-    // f->normalized_x =
-    //     ((double)(f->rect.x + f->rect.w) / (WINDOW_WIDTH + f->rect.w)) * 2 -
-    //     1;
 }
 
 void flakes_reset(struct Flake *f, bool full) {
@@ -84,11 +82,18 @@ double flake_normalized_y(const struct Flake *f, double player_y) {
 
 void flakes_update(struct Flake *f, double dt) {
     while (f) {
-        f->y_pos += FLAKE_SPEED * dt;
-        if (f->y_pos > 514) {
-            flake_reset(f, false);
+        if (f->ai_train) {
+            f->rect.y += FLAKE_AI_SPEED;
+            if (f->rect.y > GROUND) {
+                flake_reset(f, false);
+            }
         } else {
-            f->rect.y = (int)f->y_pos;
+            f->y_pos += FLAKE_SPEED * dt;
+            if (f->y_pos > GROUND) {
+                flake_reset(f, false);
+            } else {
+                f->rect.y = (int)f->y_pos;
+            }
         }
         f = f->next;
     }

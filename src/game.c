@@ -3,11 +3,12 @@
 #include "load_media.h"
 
 bool game_reset(struct Game *g);
+bool game_ai_update(struct Game *g);
 bool handle_collision(struct Game *g, struct Flake *f);
 bool check_collision(struct Game *g);
+bool game_events(struct Game *g);
 bool game_update(struct Game *g);
 void game_draw(const struct Game *g);
-void game_ai_update(struct Game *g);
 
 bool game_new(struct Game *g, const struct AIConfig *config) {
 
@@ -38,20 +39,21 @@ bool game_new(struct Game *g, const struct AIConfig *config) {
         }
     }
 
-    if (!player_new(&g->player, g->renderer, g->player_image, g->gfx_off)) {
+    if (!player_new(&g->player, g->renderer, g->player_image, g->gfx_off,
+                    g->ai_train)) {
         return false;
     }
 
     for (unsigned int i = 0; i < WHITE_FLAKES; i++) {
         if (!flake_new(&g->flakes, g->renderer, g->white_image, true,
-                       g->gfx_off)) {
+                       g->gfx_off, g->ai_train)) {
             return false;
         }
     }
 
     for (unsigned int i = 0; i < YELLOW_FLAKES; i++) {
         if (!flake_new(&g->flakes, g->renderer, g->yellow_image, false,
-                       g->gfx_off)) {
+                       g->gfx_off, g->ai_train)) {
             return false;
         }
     }
@@ -153,6 +155,36 @@ bool game_reset(struct Game *g) {
     }
 
     g->playing = true;
+    g->running = true;
+
+    return true;
+}
+
+bool game_ai_update(struct Game *g) {
+    if (g->fit_style == FIT_TICKS) {
+        g->networks[g->current_variant].fitness += g->game_ticks;
+    } else {
+        g->networks[g->current_variant].fitness += g->score->score;
+    }
+
+    g->current_trial++;
+    if (g->current_trial < g->trial_count) {
+        if (!game_reset(g)) {
+            return false;
+        }
+    } else {
+        g->networks[g->current_variant].fitness /= g->trial_count;
+        g->current_trial = 0;
+        g->current_variant++;
+        if (g->current_variant < g->game_variant_count) {
+            if (!game_reset(g)) {
+                return false;
+            }
+        } else {
+            g->current_variant = 0;
+            g->running = false;
+        }
+    }
 
     return true;
 }
@@ -189,30 +221,6 @@ bool handle_collision(struct Game *g, struct Flake *f) {
     return true;
 }
 
-void game_ai_update(struct Game *g) {
-    if (g->fit_style == FIT_TICKS) {
-        g->networks[g->current_variant].fitness += g->game_ticks;
-    } else {
-        g->networks[g->current_variant].fitness += g->score->score;
-    }
-
-    g->current_trial++;
-    if (g->current_trial < g->trial_count) {
-        game_reset(g);
-    } else {
-        g->networks[g->current_variant].fitness /= g->trial_count;
-        g->current_trial = 0;
-        g->current_variant++;
-        if (g->current_variant < g->game_variant_count) {
-            game_reset(g);
-        } else {
-            g->current_variant = 0;
-            g->running = false;
-        }
-    }
-    /*printf("fitness: %d\n", g->networks[g->current_variant].fitness);*/
-}
-
 bool check_collision(struct Game *g) {
     struct Flake *f = g->flakes;
     while (f) {
@@ -230,16 +238,43 @@ bool check_collision(struct Game *g) {
     return true;
 }
 
+bool game_events(struct Game *g) {
+    if (!g->gfx_off) {
+        while (SDL_PollEvent(&g->event)) {
+            switch (g->event.type) {
+            case SDL_QUIT:
+                g->running = false;
+                break;
+            case SDL_KEYDOWN:
+                switch (g->event.key.keysym.scancode) {
+                case SDL_SCANCODE_ESCAPE:
+                    g->running = false;
+                    break;
+                case SDL_SCANCODE_SPACE:
+                    if (!g->playing) {
+                        if (!game_reset(g)) {
+                            return false;
+                        }
+                    }
+                    break;
+                case SDL_SCANCODE_F:
+                    fps_toggle_display(g->fps);
+                    break;
+                default:
+                    break;
+                }
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    return true;
+}
+
 bool game_update(struct Game *g) {
     flakes_update(g->flakes, g->delta_time);
-
-    // printf("player x: %f\n", player_center_x(g->player));
-    // printf("player y: %f\n", player_center_y(g->player));
-
-    // printf("flake x: %f\n",
-    //        flake_normalized_x(g->flakes, player_center_x(g->player)));
-    // printf("flake y: %f\n",
-    //        flake_normalized_y(g->flakes, player_center_y(g->player)));
 
     if (g->ai_on) {
         g->networks[g->current_variant].inputs[0] =
@@ -282,28 +317,21 @@ bool game_update(struct Game *g) {
 }
 
 void game_draw(const struct Game *g) {
-    SDL_RenderClear(g->renderer);
+    if (!g->gfx_off) {
 
-    SDL_RenderCopy(g->renderer, g->background_image, NULL, &g->background_rect);
+        SDL_RenderClear(g->renderer);
 
-    player_draw(g->player);
+        SDL_RenderCopy(g->renderer, g->background_image, NULL,
+                       &g->background_rect);
 
-    flakes_draw(g->flakes);
+        player_draw(g->player);
 
-    score_draw(g->score);
+        flakes_draw(g->flakes);
 
-    SDL_RenderPresent(g->renderer);
-}
+        score_draw(g->score);
 
-void *game_run_multi(void *arg) {
-    struct Game *g = (struct Game *)arg;
-    g->running = true;
-    g->delta_time = 0.0167;
-    while (g->running) {
-        game_update(g);
+        SDL_RenderPresent(g->renderer);
     }
-
-    return NULL;
 }
 
 bool game_run(struct Game *g) {
@@ -316,51 +344,30 @@ bool game_run(struct Game *g) {
 
     g->running = true;
     while (g->running) {
-        if (!g->gfx_off) {
-            while (SDL_PollEvent(&g->event)) {
-                switch (g->event.type) {
-                case SDL_QUIT:
-                    g->running = false;
-                    break;
-                case SDL_KEYDOWN:
-                    switch (g->event.key.keysym.scancode) {
-                    case SDL_SCANCODE_ESCAPE:
-                        g->running = false;
-                        break;
-                    case SDL_SCANCODE_SPACE:
-                        if (!g->playing) {
-                            if (!game_reset(g)) {
-                                return false;
-                            }
-                        }
-                        break;
-                    case SDL_SCANCODE_F:
-                        fps_toggle_display(g->fps);
-                        break;
-                    default:
-                        break;
-                    }
-                    break;
-                default:
-                    break;
-                }
-            }
+        if (!game_events(g)) {
+            return false;
         }
 
         if (g->playing) {
             game_update(g);
         }
 
-        if (!g->gfx_off) {
-            game_draw(g);
-        }
+        game_draw(g);
 
-        if (g->ai_train) {
-            g->delta_time = 0.0167;
-        } else {
+        if (!g->ai_train) {
             g->delta_time = fps_update(g->fps);
         }
     }
 
     return true;
+}
+
+void *game_run_multi(void *arg) {
+    struct Game *g = (struct Game *)arg;
+    g->running = true;
+    while (g->running) {
+        game_update(g);
+    }
+
+    return NULL;
 }
