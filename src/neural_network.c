@@ -72,20 +72,29 @@ void network_update(struct NeuralNetwork *n) {
     double *inputs = n->inputs;
     for (int layer = 0; layer < n->layers; layer++) {
         int layer_size = n->hidden[layer].size;
+
+        // Process each neuron in the current layer.
         for (int neuron = 0; neuron < layer_size; neuron++) {
             double output = 0;
+
+            // Multiply inputs by weights and it output.
+            // Each input contributes to the neuron's weighted sum.
             for (int input = 0; input < input_size; input++) {
                 output +=
                     inputs[input] * n->hidden[layer].weights[neuron][input];
-                // printf("neuron = %i\n", neuron);
-                // printf("input = %i\n", input);
             }
+
+            // Add the bias to the weighted sum.
+            // Bias shifts the weighted sum to improve learning flexibility.
             output += n->hidden[layer].bias[neuron];
 
-            // ReLU (Rectified Linear Unit) activation function. Just 0 if
-            // negative.
+            // Apply the ReLU (Rectified Linear Unit) activation function.
+            // ReLU outputs 0 if the output is negative, otherwise the value
+            // itself.
             n->hidden[layer].output[neuron] = (output > 0) ? output : 0;
         }
+
+        // The current layers size is the next layers input size.
         input_size = layer_size;
         inputs = n->hidden[layer].output;
     }
@@ -94,20 +103,15 @@ void network_update(struct NeuralNetwork *n) {
     for (int neuron = 0; neuron < OUTPUTS; neuron++) {
         double output = 0;
         for (int input = 0; input < input_size; input++) {
-            // printf("neuron = %i\n", neuron);
-            // printf("input = %i\n", input);
-            // printf("inputs[input] = %f\n", inputs[input]);
-            // printf("n->final_weights[neuron][input] = %f\n",
-            //        n->final_weights[neuron][input]);
             output += inputs[input] * n->final_weights[neuron][input];
         }
         output += n->final_bias[neuron];
 
-        // Hard Sigmoid or Step Function, activation function. 1 for over 0
-        // otherwise 0.
+        // No longer a Hard Sigmoid or Step Function, activation function.
         n->final_output[neuron] = output;
     }
 
+    // binary selection mechanism. for better performance over hard sigmoid.
     n->output[0] = false;
     n->output[1] = false;
     if (n->final_output[0] > 0 || n->final_output[1] > 0) {
