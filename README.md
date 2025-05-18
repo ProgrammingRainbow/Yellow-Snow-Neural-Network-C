@@ -28,7 +28,7 @@ Command line switches. Some switches will turn others on or off. `--ai_train` wi
 --white_inc {+-int}     // Training white flake collision fitness increment.
 --yellow_inc {+-int}    // Training yellow flake collision fitness increment.
 --mut_rate {int}        // Rate of random mutation in percentage.
---mut_rang {int}        // Range of random mutation in percentage.
+--gau_dev {int}         // 1/100 Random Gaussian Deviation.
 --trials {int}          // How many trials to run the same game to average.
 --max_ticks {int}       // How many game Ticks to run for each game.
 --threads {int}         // How many cpu threads
