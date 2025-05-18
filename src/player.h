@@ -10,6 +10,7 @@ struct Player {
         SDL_RendererFlip flip;
         const Uint8 *keystate;
         double x_pos;
+        double normalized_y;
         bool ai_train;
 };
 
@@ -23,6 +24,7 @@ int player_top(const struct Player *p);
 double player_center_x(const struct Player *p);
 double player_center_y(const struct Player *p);
 double player_normalized_x(const struct Player *p);
+double player_normalized_y(const struct Player *p);
 void player_update(struct Player *p, double dt, bool left, bool right);
 void player_draw(const struct Player *p);
 

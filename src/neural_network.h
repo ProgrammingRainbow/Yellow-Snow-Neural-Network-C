@@ -21,12 +21,13 @@ struct NeuralNetwork {
         bool output[OUTPUTS];
 
         int layers;
-        int fitness;
+        double fitness;
         int generation;
+        bool mutate;
 };
 
-void variant_rand(struct NeuralNetwork *n);
-void variant_mutate(struct NeuralNetwork *n, double mut_rate, double mut_rang);
+void variant_rand(struct NeuralNetwork *n, double int_dev);
+void variant_mutate(struct NeuralNetwork *n, double mut_rate, double gau_dev);
 void network_update(struct NeuralNetwork *n);
 
 #endif

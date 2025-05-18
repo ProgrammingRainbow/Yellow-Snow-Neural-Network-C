@@ -53,7 +53,7 @@ void flakes_free(struct Flake **flakes) {
 
 void flake_reset(struct Flake *f, bool full) {
     int height = full ? WINDOW_HEIGHT * 2 : WINDOW_HEIGHT;
-    f->rect.x = (rand() % (WINDOW_WIDTH + f->rect.w)) - f->rect.w;
+    f->rect.x = (rand() % (WINDOW_WIDTH)) - (f->rect.w / 2);
     f->rect.y = -((rand() % height) + f->rect.h);
     f->y_pos = f->rect.y;
 }
@@ -71,14 +71,48 @@ int flake_right(const struct Flake *f) { return f->rect.x + f->rect.w; }
 
 int flake_bottom(const struct Flake *f) { return f->rect.y + f->rect.h; }
 
-double flake_normalized_x(const struct Flake *f, double player_x) {
-    return ((player_x - f->rect.x - (f->rect.w / 2.0)) /
-            (WINDOW_WIDTH + f->rect.w));
+double flake_relative_x(const struct Flake *f, double player_x) {
+    double normal_x = (f->rect.x + (f->rect.w / 2.0) - player_x);
+    if (normal_x > (WINDOW_WIDTH / 2.0)) {
+        normal_x -= WINDOW_WIDTH;
+    } else if (normal_x < -(WINDOW_WIDTH / 2.0)) {
+        normal_x += WINDOW_WIDTH;
+    }
+
+    return normal_x;
 }
 
-double flake_normalized_y(const struct Flake *f, double player_y) {
-    return ((player_y - f->rect.y - (f->rect.h / 2.0)) / (WINDOW_HEIGHT * 2));
+double flake_relative_y(const struct Flake *f, double player_y) {
+    return player_y - f->rect.y + (f->rect.h / 2.0);
 }
+
+// double flake_normalized_x(const struct Flake *f, double player_x) {
+//     double normal_x =
+//         (f->rect.x - (f->rect.w / 2.0) - player_x) / WINDOW_WIDTH * 2;
+//     if (normal_x > 1) {
+//         normal_x -= 2;
+//     } else if (normal_x < -1) {
+//         normal_x += 2;
+//     }
+//
+//     return normal_x;
+// }
+//
+// double flake_normalized_y(const struct Flake *f, double player_y) {
+//     return ((player_y - f->rect.y - (f->rect.h / 2.0)) / (WINDOW_HEIGHT *
+//     2));
+// }
+
+// double flake_normalized_x(const struct Flake *f) {
+//     return ((f->rect.x + f->rect.w) / (double)(WINDOW_WIDTH + f->rect.w)) * 2
+//     -
+//            1;
+// }
+//
+// double flake_normalized_y(const struct Flake *f) {
+//     return (f->rect.y + (f->rect.h / 2.0) + (WINDOW_HEIGHT / 2.0)) /
+//            (WINDOW_HEIGHT * 1.5);
+// }
 
 void flakes_update(struct Flake *f, double dt) {
     while (f) {

@@ -1,3 +1,4 @@
+#include "main.h"
 #include "ai.h"
 
 bool is_number(const char *str);
@@ -39,8 +40,9 @@ bool parse_arguments(int argc, char *argv[], struct AIConfig *config) {
     config->filename = FILE_NAME;
     config->white_inc = WHITE_INC;
     config->yellow_inc = YELLOW_INC;
-    config->mut_rate = MUT_RATE;
-    config->mut_rang = MUT_RANG;
+    config->mut_rate = MUT_RATE / 100.0;
+    config->int_dev = INT_DEV / 100.0;
+    config->gau_dev = GAU_DEV / 100.0;
     config->max_ticks = TICKS;
     config->thread_count = THREADS;
     config->trial_count = TRIALS;
@@ -115,16 +117,29 @@ bool parse_arguments(int argc, char *argv[], struct AIConfig *config) {
                 config->ai_on = true;
                 config->ai_train = true;
             }
-        } else if (strcmp(argv[argument], "--mut_rang") == 0) {
+        } else if (strcmp(argv[argument], "--int_dev") == 0) {
             argument++;
             if (argument < argc) {
                 int num = atoi(argv[argument]);
-                if (!is_number(argv[argument]) || num < 1 || num > MAX_RANG) {
-                    fprintf(stderr, "--mut_rang %s is not valid.\n",
+                if (!is_number(argv[argument]) || num < 1 || num > MAX_DEV) {
+                    fprintf(stderr, "--int_dev %s is not valid.\n",
                             argv[argument]);
                     return false;
                 }
-                config->mut_rang = num / 100.0;
+                config->int_dev = num / 100.0;
+                config->ai_on = true;
+                config->ai_train = true;
+            }
+        } else if (strcmp(argv[argument], "--gau_dev") == 0) {
+            argument++;
+            if (argument < argc) {
+                int num = atoi(argv[argument]);
+                if (!is_number(argv[argument]) || num < 1 || num > MAX_DEV) {
+                    fprintf(stderr, "--gau_dev %s is not valid.\n",
+                            argv[argument]);
+                    return false;
+                }
+                config->gau_dev = num / 100.0;
                 config->ai_on = true;
                 config->ai_train = true;
             }
@@ -173,7 +188,7 @@ bool parse_arguments(int argc, char *argv[], struct AIConfig *config) {
             argument++;
             if (argument < argc) {
                 int num = atoi(argv[argument]);
-                if (!is_number(argv[argument]) || num < config->variant_count ||
+                if (!is_number(argv[argument]) || num > config->variant_count ||
                     num > MAX_TOP_VARIANTS) {
                     fprintf(stderr, "--top_variants %s is not valid.\n",
                             argv[argument]);
@@ -250,7 +265,8 @@ bool parse_arguments(int argc, char *argv[], struct AIConfig *config) {
         return false;
     }
 
-    config->game_variant_count = config->variant_count / config->thread_count;
+    config->game_variant_count =
+        (int)ceil(config->variant_count / (double)config->thread_count);
 
     if (config->layer_count) {
         printf("Generating new network with layers:");
@@ -261,16 +277,30 @@ bool parse_arguments(int argc, char *argv[], struct AIConfig *config) {
     }
 
     if (config->ai_on) {
-        printf("white_inc %d, yellow_inc %d\n", config->white_inc,
-               config->yellow_inc);
         printf("filename: %s\n", config->filename);
         printf("ai_on: %s\n", (config->ai_on) ? "true" : "false");
-        printf("ai_train: %s\n", (config->ai_train) ? "true" : "false");
-        printf("gfx_off: %s\n", (config->gfx_off) ? "true" : "false");
         if (config->ai_train) {
+            printf("ai_train: %s\n", (config->ai_train) ? "true" : "false");
+            printf("gfx_off: %s\n", (config->gfx_off) ? "true" : "false");
+            switch (config->fit_style) {
+            case FIT_TIMED:
+                printf("fit_style: fit_timed\n");
+                printf("max_ticks: %d\n", config->max_ticks);
+                printf("white_inc %d, yellow_inc %d\n", config->white_inc,
+                       config->yellow_inc);
+                break;
+            case FIT_SCORE:
+                printf("fit_style: fit_score\n");
+                break;
+            case FIT_TICKS:
+                printf("fit_style: fit_ticks\n");
+                break;
+            default:
+                break;
+            }
             printf("mut_rate: %g\n", config->mut_rate);
-            printf("mut_rang: %g\n", config->mut_rang);
-            printf("max_ticks: %d\n", config->max_ticks);
+            printf("int_dev: %g\n", config->int_dev);
+            printf("gau_dev: %g\n", config->gau_dev);
             printf("threads: %d\n", config->thread_count);
             printf("trials: %d\n", config->trial_count);
             printf("variants: %d\n", config->variant_count);
@@ -291,8 +321,6 @@ int main(int argc, char *argv[]) {
     if (!parse_arguments(argc, argv, &ai_config)) {
         return exit_status;
     }
-
-    // return EXIT_SUCCESS;
 
     struct AI *ai = NULL;
 

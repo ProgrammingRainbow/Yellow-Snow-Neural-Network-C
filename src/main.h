@@ -5,6 +5,7 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_ttf.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -32,8 +33,8 @@
 
 #define PLAYER_Y 377
 #define PLAYER_TOP_OFFSET 10
-#define PLAYER_LEFT_OFFSET 47
-#define PLAYER_RIGHT_OFFSET 43
+#define PLAYER_LEFT_OFFSET 45
+#define PLAYER_RIGHT_OFFSET 45
 #define PLAYER_SPEED 300
 #define PLAYER_AI_SPEED 5
 
@@ -49,7 +50,7 @@
 #define INFO_DELAY 3000
 #define FILE_NAME "neural-networks"
 
-#define INPUTS 31
+#define INPUTS 30
 #define OUTPUTS 2
 
 #define LAYER_SIZE 64
@@ -58,8 +59,11 @@
 #define MUT_RATE 5
 #define MAX_RATE 15
 
-#define MUT_RANG 5
-#define MAX_RANG 15
+#define GAU_DEV 10
+#define INT_DEV 5
+#define MAX_DEV 300
+
+#define STD_DEVIATION 1
 
 #define THREADS 1
 #define MAX_THREADS 24
@@ -68,16 +72,16 @@
 #define MAX_TICKS 7200
 
 #define TRIALS 1
-#define MAX_TRIALS 10
+#define MAX_TRIALS 100
 
 #define GENS 20
 #define MAX_GENS 1000000
 
 #define VARIANTS 240
-#define MAX_VARIANTS 1000
+#define MAX_VARIANTS 1024
 
 #define TOP_VARIANTS 24
-#define MAX_TOP_VARIANTS 100
+#define MAX_TOP_VARIANTS 512
 
 enum Fitness { FIT_SCORE, FIT_TICKS, FIT_TIMED };
 
@@ -92,7 +96,8 @@ struct AIConfig {
         bool gfx_off;
         enum Fitness fit_style;
         double mut_rate;
-        double mut_rang;
+        double int_dev;
+        double gau_dev;
         int thread_count;
         int max_ticks;
         int trial_count;

@@ -31,6 +31,8 @@ bool player_new(struct Player **player, SDL_Renderer *renderer,
     p->x_pos = (double)(WINDOW_WIDTH - p->rect.w) / 2;
     p->rect.x = (int)p->x_pos;
     p->rect.y = PLAYER_Y;
+    p->normalized_y = (PLAYER_Y + (p->rect.h / 2.0) + (WINDOW_HEIGHT / 2.0)) /
+                      (1.5 * WINDOW_HEIGHT);
 
     return true;
 }
@@ -69,37 +71,39 @@ double player_center_y(const struct Player *p) {
 }
 
 double player_normalized_x(const struct Player *p) {
-    return ((p->rect.x + (p->rect.w / 2.0)) / WINDOW_WIDTH) * 2 - 1;
+    return ((p->rect.x + (p->rect.w / 2.0) + 16) / (WINDOW_WIDTH + 32)) * 2 - 1;
 }
+
+double player_normalized_y(const struct Player *p) { return p->normalized_y; }
 
 void player_update(struct Player *p, double dt, bool left, bool right) {
     if (p->ai_train) {
         if (left) {
             p->rect.x -= PLAYER_AI_SPEED;
-            if (p->rect.x < -PLAYER_LEFT_OFFSET) {
-                p->rect.x = -PLAYER_LEFT_OFFSET;
+            if (p->rect.x + (p->rect.w / 2) < 0) {
+                p->rect.x = WINDOW_WIDTH - (p->rect.w / 2);
             }
         }
         if (right) {
             p->rect.x += PLAYER_AI_SPEED;
-            if (p->rect.x > WINDOW_WIDTH - p->rect.w + PLAYER_RIGHT_OFFSET) {
-                p->rect.x = WINDOW_WIDTH - p->rect.w + PLAYER_RIGHT_OFFSET;
+            if (p->rect.x > WINDOW_WIDTH - (p->rect.w / 2)) {
+                p->rect.x = -(p->rect.w / 2);
             }
         }
     } else {
         if (p->keystate[SDL_SCANCODE_LEFT] || p->keystate[SDL_SCANCODE_A] ||
             left) {
             p->x_pos -= PLAYER_SPEED * dt;
-            if (p->x_pos < -PLAYER_LEFT_OFFSET) {
-                p->x_pos = -PLAYER_LEFT_OFFSET;
+            if (p->x_pos + (p->rect.w / 2.0) < 0) {
+                p->x_pos = WINDOW_WIDTH - (p->rect.w / 2.0);
             }
             p->flip = SDL_FLIP_HORIZONTAL;
         }
         if (p->keystate[SDL_SCANCODE_RIGHT] || p->keystate[SDL_SCANCODE_D] ||
             right) {
             p->x_pos += PLAYER_SPEED * dt;
-            if (p->x_pos > WINDOW_WIDTH - p->rect.w + PLAYER_RIGHT_OFFSET) {
-                p->x_pos = WINDOW_WIDTH - p->rect.w + PLAYER_RIGHT_OFFSET;
+            if (p->x_pos > WINDOW_WIDTH - (p->rect.w / 2.0)) {
+                p->x_pos = -(p->rect.w / 2.0);
             }
             p->flip = SDL_FLIP_NONE;
         }

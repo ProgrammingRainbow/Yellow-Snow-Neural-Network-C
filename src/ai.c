@@ -80,7 +80,7 @@ bool networks_load(struct AI *a, const struct AIConfig *config) {
             for (int layer = 0; layer < config->layer_count; layer++) {
                 a->top[variant].hidden[layer].size = config->layer_sizes[layer];
             }
-            variant_rand(&a->top[variant]);
+            variant_rand(&a->top[variant], config->int_dev);
         }
     } else {
         FILE *file = fopen(config->filename, "rb");
@@ -114,28 +114,17 @@ bool networks_load(struct AI *a, const struct AIConfig *config) {
 }
 
 void networks_populate(struct AI *a, const struct AIConfig *config) {
-    int top_per_thread = config->top_variant_count / config->thread_count;
-    int var_per_top_per_thread = config->game_variant_count / top_per_thread;
-
-    int top_var = 0;
-    // for each game.
-    for (int game = 0; game < config->thread_count; game++) {
-        // for top_vars / game.
-        int game_var = 0;
-        for (int i = 0; i < top_per_thread; i++) {
-            a->games[game].networks[game_var] = a->top[top_var];
-            a->games[game].networks[game_var].fitness = 0;
-            game_var++;
-
-            for (int j = 1; j < var_per_top_per_thread; j++) {
-                a->games[game].networks[game_var] = a->top[top_var];
-                a->games[game].networks[game_var].fitness = 0;
-                variant_mutate(&a->games[game].networks[game_var],
-                               config->mut_rate, config->mut_rang);
-                game_var++;
-            }
-
-            top_var++;
+    for (int variant = 0; variant < config->variant_count; variant++) {
+        int game = variant / config->game_variant_count;
+        int game_var = variant % config->game_variant_count;
+        int top_var = variant % config->top_variant_count;
+        a->games[game].networks[game_var] = a->top[top_var];
+        a->games[game].networks[game_var].fitness = 0;
+        a->games[game].game_variant_count = game_var;
+        if (variant < config->top_variant_count) {
+            a->games[game].networks[game_var].mutate = false;
+        } else {
+            a->games[game].networks[game_var].mutate = true;
         }
     }
 }
@@ -160,23 +149,38 @@ void networks_save(struct AI *a, const struct AIConfig *config) {
 }
 
 void networks_get_top(struct AI *a, const struct AIConfig *config) {
-    memset(a->top, -10000,
-           (size_t)config->top_variant_count * sizeof(struct NeuralNetwork));
-    for (int game = 0; game < config->thread_count; game++) {
-        for (int game_var = 0; game_var < config->game_variant_count;
-             game_var++) {
-            int fitness = a->games[game].networks[game_var].fitness;
-            for (int top_var = 0; top_var < config->top_variant_count;
-                 top_var++) {
-                if (fitness > a->top[top_var].fitness) {
+    struct NeuralNetwork *top_vars[config->top_variant_count];
+
+    for (int i = 0; i < config->top_variant_count; i++) {
+        top_vars[i] = NULL;
+    }
+
+    for (int variant = 0; variant < config->variant_count; variant++) {
+        int game = variant / config->game_variant_count;
+        int game_var = variant % config->game_variant_count;
+        double fitness = a->games[game].networks[game_var].fitness;
+
+        for (int top_var = 0; top_var < config->top_variant_count; top_var++) {
+            if (top_vars[top_var]) {
+                if (fitness > top_vars[top_var]->fitness) {
                     for (int i = config->top_variant_count - 1; i > top_var;
                          i--) {
-                        a->top[i] = a->top[i - 1];
+                        if (top_vars[i - 1]) {
+                            top_vars[i] = top_vars[i - 1];
+                        }
                     }
-                    a->top[top_var] = a->games[game].networks[game_var];
+                    top_vars[top_var] = &a->games[game].networks[game_var];
                     break;
                 }
+            } else {
+                top_vars[top_var] = &a->games[game].networks[game_var];
             }
+        }
+    }
+
+    for (int i = 0; i < config->top_variant_count; i++) {
+        if (top_vars[i]) {
+            a->top[i] = *top_vars[i];
         }
     }
 }
@@ -202,8 +206,10 @@ bool ai_run(struct AI *a, const struct AIConfig *config) {
 
             networks_get_top(a, config);
 
-            for (int i = 0; i < config->top_variant_count; i++) {
-                printf("fitness: %d, generation: %d\n", a->top[i].fitness,
+            int print_top =
+                20 < config->top_variant_count ? 20 : config->top_variant_count;
+            for (int i = 0; i < print_top; i++) {
+                printf("fitness: %f, generation: %d\n", a->top[i].fitness,
                        a->top[i].generation);
             }
 

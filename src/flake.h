@@ -21,8 +21,12 @@ void flakes_reset(struct Flake *f, bool full);
 int flake_left(const struct Flake *f);
 int flake_right(const struct Flake *f);
 int flake_bottom(const struct Flake *f);
-double flake_normalized_x(const struct Flake *f, double player_x);
-double flake_normalized_y(const struct Flake *f, double player_y);
+double flake_relative_x(const struct Flake *f, double player_x);
+double flake_relative_y(const struct Flake *f, double player_y);
+// double flake_normalized_x(const struct Flake *f, double player_x);
+// double flake_normalized_y(const struct Flake *f, double player_y);
+// double flake_normalized_x(const struct Flake *f);
+// double flake_normalized_y(const struct Flake *f);
 void flakes_update(struct Flake *f, double dt);
 void flakes_draw(const struct Flake *f);
 

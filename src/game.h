@@ -38,6 +38,11 @@ struct Game {
         int current_trial;
         int max_ticks;
         int game_ticks;
+        // int relative_x;
+        // int relative_y;
+        int dist;
+        double mut_rate;
+        double gau_dev;
 };
 
 bool game_new(struct Game *game, const struct AIConfig *config);

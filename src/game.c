@@ -19,6 +19,8 @@ bool game_new(struct Game *g, const struct AIConfig *config) {
     g->max_ticks = config->max_ticks;
     g->game_variant_count = config->game_variant_count;
     g->trial_count = config->trial_count;
+    g->mut_rate = config->mut_rate;
+    g->gau_dev = config->gau_dev;
 
     g->networks =
         calloc((size_t)g->game_variant_count, sizeof(struct NeuralNetwork));
@@ -152,6 +154,7 @@ bool game_reset(struct Game *g) {
 
     if (g->ai_train) {
         g->game_ticks = 0;
+        g->dist = 0;
     }
 
     g->playing = true;
@@ -176,7 +179,7 @@ bool game_ai_update(struct Game *g) {
         g->networks[g->current_variant].fitness /= g->trial_count;
         g->current_trial = 0;
         g->current_variant++;
-        if (g->current_variant < g->game_variant_count) {
+        if (g->current_variant <= g->game_variant_count) {
             if (!game_reset(g)) {
                 return false;
             }
@@ -277,16 +280,46 @@ bool game_update(struct Game *g) {
     flakes_update(g->flakes, g->delta_time);
 
     if (g->ai_on) {
-        g->networks[g->current_variant].inputs[0] =
-            player_normalized_x(g->player);
+        int input = 0;
 
-        int input = 1;
         struct Flake *flake = g->flakes;
+
         while (flake) {
-            g->networks[g->current_variant].inputs[input] =
-                flake_normalized_x(flake, player_center_x(g->player));
-            g->networks[g->current_variant].inputs[input + 1] =
-                flake_normalized_y(flake, player_center_y(g->player));
+            double x = flake_relative_x(flake, player_center_x(g->player));
+            double y = flake_relative_y(flake, player_center_y(g->player));
+
+            if (x >= 0 && x <= 344) {
+                x = 344 - x;
+                if (x > 300) {
+                    x = 300;
+                }
+            } else if (x >= -344 && x < 0) {
+                x = -344 - x;
+                if (x < -300) {
+                    x = -300;
+                }
+            } else {
+                x = 0;
+            }
+            x = x * fabs(x) / 100;
+            if (y >= 0 && y <= 384) {
+                y = 384 - y;
+                if (y > 300) {
+                    y = 300;
+                }
+            } else if (y >= -384 && y < 0) {
+                y = 384 + y;
+                if (y > 300) {
+                    y = 300;
+                }
+            } else {
+                y = 0;
+            }
+            y = y * fabs(y) / 100;
+
+            g->networks[g->current_variant].inputs[input] = x;
+            g->networks[g->current_variant].inputs[input + 1] = y;
+
             input += 2;
             flake = flake->next;
         }
@@ -364,6 +397,13 @@ bool game_run(struct Game *g) {
 
 void *game_run_multi(void *arg) {
     struct Game *g = (struct Game *)arg;
+
+    for (int network = 0; network < g->game_variant_count; network++) {
+        if (g->networks[network].mutate) {
+            variant_mutate(&g->networks[network], g->mut_rate, g->gau_dev);
+        }
+    }
+
     g->running = true;
     while (g->running) {
         game_update(g);
